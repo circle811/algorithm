@@ -3,7 +3,11 @@
 (provide list-insertion-sort
          list-selection-sort
          list-merge-sort
-         list-quick-sort)
+         list-quick-sort
+         vector-insertion-sort!
+         vector-selection-sort!
+         vector-merge-sort!
+         vector-quick-sort!)
 
 (define (list-insertion-sort a <?)
   (define (insert x a)
@@ -86,3 +90,109 @@
                   (list (car a))
                   (sort c)))))
   (sort a))
+
+(define (vector-binary-search a low high pred)
+  (let loop ([low low]
+             [high high])
+    (if (= low high)
+        low
+        (let ([mid (quotient (+ low high) 2)])
+          (if (pred (vector-ref a mid))
+              (loop (add1 mid) high)
+              (loop low mid))))))
+
+(define (vector-partial-insertion-sort! a low high <?)
+  (for ([i (in-range (add1 low) high)])
+    (let* ([x (vector-ref a i)]
+           [j (vector-binary-search a low i
+                                    (lambda (y)
+                                      (not (<? x y))))])
+      (vector-copy! a (add1 j) a j i)
+      (vector-set! a j x))))
+
+(define (vector-insertion-sort! a <?)
+  (vector-partial-insertion-sort! a 0 (vector-length a) <?))
+
+(define (vector-selection-sort! a <?)
+  (define (select a low high)
+    (for/fold ([pos low]
+               [min (vector-ref a low)])
+              ([j (in-range (add1 low) high)])
+      (let ([x (vector-ref a j)])
+        (if (<? x min)
+            (values j x)
+            (values pos min)))))
+  (let ([length (vector-length a)])
+    (for ([i (in-range 0 (sub1 length))])
+      (let-values ([(pos min) (select a i length)])
+        (vector-copy! a (add1 i) a i pos)
+        (vector-set! a i min)))))
+
+(define N 16)
+
+(define (vector-merge-sort! a <?)
+  (define (merge! a a-low b b-low b-high c c-low c-high)
+    (let loop ([i a-low]
+               [j b-low]
+               [k c-low])
+      (cond
+        [(= j b-high)
+         (vector-copy! a i c k c-high)]
+        [(= k c-high)
+         (vector-copy! a i b j b-high)]
+        [(<? (vector-ref c k) (vector-ref b j))
+         (vector-set! a i (vector-ref c k))
+         (loop (add1 i) j (add1 k))]
+        [else
+         (vector-set! a i (vector-ref b j))
+         (loop (add1 i) (add1 j) k)])))
+  (define (sort! b b-low c c-low c-high)
+    (let* ([length (- c-high c-low)]
+           [b-high (+ b-low length)])
+      (if (and (<= length N)
+               (eq? b a))
+          (vector-partial-insertion-sort! b b-low b-high <?)
+          (let* ([half (quotient (add1 length) 2)]
+                 [b-mid (+ b-low half)]
+                 [c-mid (+ c-low half)])
+            (sort! c c-low b b-low b-mid)
+            (sort! c c-mid b b-mid b-high)
+            (merge! b b-low c c-low c-mid c c-mid c-high)))))
+  (let ([length (vector-length a)])
+    (if (<= length N)
+        (vector-partial-insertion-sort! a 0 length <?)
+        (let* ([half (quotient (add1 length) 2)]
+               [b (make-vector half)])
+          (sort! a half b 0 (- length half))
+          (sort! b 0 a 0 half)
+          (merge! a 0 b 0 half a half length)))))
+
+(define (random-range min max)
+  (+ min (random (- max min))))
+
+(define (vector-swap! a i j)
+  (let ([x (vector-ref a i)])
+    (vector-set! a i (vector-ref a j))
+    (vector-set! a j x)))
+
+(define (vector-quick-sort! a <?)
+  (define (partition! x low high)
+    (for/fold ([sep low])
+              ([j (in-range low high)])
+      (if (if (even? j)
+              (<? (vector-ref a j) x)
+              (not (<? x (vector-ref a j))))
+          (begin
+            (vector-swap! a sep j)
+            (add1 sep))
+          sep)))
+  (define (sort! low high)
+    (if (<= (- high low) N)
+        (vector-partial-insertion-sort! a low high <?)
+        (begin
+          (vector-swap! a low (random-range low high))
+          (let ([sep (partition! (vector-ref a low) (add1 low) high)])
+            (vector-swap! a low (sub1 sep))
+            (sort! low (sub1 sep))
+            (sort! sep high)))))
+  (sort! 0 (vector-length a)))
