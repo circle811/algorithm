@@ -1,5 +1,8 @@
 #lang racket/base
 
+(require "base.rkt"
+         "binary-heap.rkt")
+
 (provide list-insertion-sort
          list-selection-sort
          list-merge-sort
@@ -7,7 +10,8 @@
          vector-insertion-sort!
          vector-selection-sort!
          vector-merge-sort!
-         vector-quick-sort!)
+         vector-quick-sort!
+         vector-heap-sort!)
 
 (define (list-insertion-sort a <?)
   (define (insert x a)
@@ -167,14 +171,6 @@
           (sort! b 0 a 0 half)
           (merge! a 0 b 0 half a half length)))))
 
-(define (random-range min max)
-  (+ min (random (- max min))))
-
-(define (vector-swap! a i j)
-  (let ([x (vector-ref a i)])
-    (vector-set! a i (vector-ref a j))
-    (vector-set! a j x)))
-
 (define (vector-quick-sort! a <?)
   (define (partition! x low high)
     (for/fold ([sep low])
@@ -196,3 +192,10 @@
             (sort! low (sub1 sep))
             (sort! sep high)))))
   (sort! 0 (vector-length a)))
+
+(define (vector-heap-sort! a <?)
+  (let ([length (vector-length a)])
+    (build-heap! a length <?)
+    (for ([i (in-range (sub1 length) 0 -1)])
+      (vector-swap! a 0 i)
+      (heap-move-down! a i <? 0))))
