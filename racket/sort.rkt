@@ -8,10 +8,13 @@
          list-merge-sort
          list-quick-sort
          vector-insertion-sort!
+         vector-binary-insertion-sort!
          vector-selection-sort!
          vector-merge-sort!
          vector-quick-sort!
-         vector-heap-sort!)
+         vector-heap-sort!
+         vector-radix-sort
+         vector-bucket-sort)
 
 (define (list-insertion-sort a <?)
   (define (insert x a)
@@ -95,6 +98,16 @@
                   (sort c)))))
   (sort a))
 
+(define (vector-back-search a low high pred)
+  (let loop ([high high])
+    (cond
+      [(= low high)
+       low]
+      [(pred (vector-ref a (sub1 high)))
+       high]
+      [else
+       (loop (sub1 high))])))
+
 (define (vector-binary-search a low high pred)
   (let loop ([low low]
              [high high])
@@ -105,17 +118,23 @@
               (loop (add1 mid) high)
               (loop low mid))))))
 
-(define (vector-partial-insertion-sort! a low high <?)
+(define (vector-partial-insertion-sort-s! a low high <? search)
   (for ([i (in-range (add1 low) high)])
     (let* ([x (vector-ref a i)]
-           [j (vector-binary-search a low i
-                                    (lambda (y)
-                                      (not (<? x y))))])
+           [j (search a low i
+                      (lambda (y)
+                        (not (<? x y))))])
       (vector-copy! a (add1 j) a j i)
       (vector-set! a j x))))
 
+(define (vector-partial-insertion-sort! a low high <?)
+  (vector-partial-insertion-sort-s! a low high <? vector-back-search))
+
 (define (vector-insertion-sort! a <?)
-  (vector-partial-insertion-sort! a 0 (vector-length a) <?))
+  (vector-partial-insertion-sort-s! a 0 (vector-length a) <? vector-back-search))
+
+(define (vector-binary-insertion-sort! a <?)
+  (vector-partial-insertion-sort-s! a 0 (vector-length a) <? vector-binary-search))
 
 (define (vector-selection-sort! a <?)
   (define (select a low high)
@@ -199,3 +218,51 @@
     (for ([i (in-range (sub1 length) 0 -1)])
       (vector-swap! a 0 i)
       (heap-move-down! a i <? 0))))
+
+(define (vector-counting-sort a key key-count)
+  (let ([b (make-vector (vector-length a))]
+        [c (make-vector key-count 0)])
+    (for ([x a])
+      (let ([k (key x)])
+        (vector-set! c k (add1 (vector-ref c k)))))
+    (for/fold ([start 0])
+              ([i (in-range 0 key-count)])
+      (begin0
+        (+ start (vector-ref c i))
+        (vector-set! c i start)))
+    (for ([i (in-naturals)]
+          [x a])
+      (let* ([k (key x)]
+             [pos (vector-ref c k)])
+        (vector-set! b pos x)
+        (vector-set! c k (add1 pos))))
+    b))
+
+(define (vector-radix-sort a key)
+  (let* ([key-max (for/fold ([m 0])
+                            ([x a])
+                    (max m (key x)))]
+         [total-bit-length (integer-length key-max)]
+         [pass-bit-length (max (integer-length (vector-length a)) 4)]
+         [key-count (arithmetic-shift 1 pass-bit-length)]
+         [key-mask (sub1 key-count)])
+    (for/fold ([b a])
+              ([bit-start (in-range 0 total-bit-length pass-bit-length)])
+      (vector-counting-sort b
+                            (lambda (x)
+                              (bitwise-and (arithmetic-shift (key x)
+                                                             (- bit-start))
+                                           key-mask))
+                            key-count))))
+
+(define (vector-bucket-sort a key)
+  (let* ([length (vector-length a)]
+         [b (vector-counting-sort a
+                                  (lambda (x)
+                                    (inexact->exact
+                                     (floor (* length (key x)))))
+                                  length)])
+    (vector-insertion-sort! b
+                            (lambda (x y)
+                              (< (key x) (key y))))
+    b))
