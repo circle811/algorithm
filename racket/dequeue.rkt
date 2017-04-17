@@ -19,7 +19,7 @@
 
 (define (make-dequeue [block-size 64])
   (unless (> block-size 1)
-    (error "make-dequeue: block-size must greater than 1"))
+    (error "block-size is not greater than 1"))
   (let ([b (block #f #f (make-vector block-size))]
         [half (quotient block-size 2)])
     (dequeue b b half half 0 block-size)))
@@ -29,7 +29,7 @@
 
 (define (dequeue-empty-check q)
   (when (dequeue-empty? q)
-    (error "empty dequeue")))
+    (error "dequeue is empty")))
 
 (define (dequeue-left q)
   (dequeue-empty-check q)
