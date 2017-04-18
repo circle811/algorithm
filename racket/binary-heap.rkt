@@ -2,44 +2,52 @@
 
 (require "base.rkt")
 
-(provide build-heap!
-         heap-insert!
-         heap-extract-top!
-         heap-move-up!
-         heap-move-down!)
+(provide binary-heap-fix-increased!
+         binary-heap-fix-decreased!
+         binary-heap-top
+         binary-heap-push!
+         binary-heap-pop-top!
+         build-binary-heap!)
 
-(define (build-heap! a length lower?)
-  (for ([i (in-range (sub1 (quotient length 2)) -1 -1)])
-    (heap-move-down! a length lower? i)))
-
-(define (heap-insert! a length lower? x)
-  (vector-set! a length x)
-  (heap-move-up! a (add1 length) lower? length))
-
-(define (heap-extract-top! a length lower?)
-  (let ([top (vector-ref a 0)])
-    (vector-set! a 0 (vector-ref a (sub1 length)))
-    (vector-set! a (sub1 length) #f)
-    (heap-move-down! a (sub1 length) lower? 0)
-    top))
-
-(define (heap-move-up! a length lower? i)
+(define (binary-heap-fix-increased! a length lower? i)
   (let loop ([i i])
-    (let ([p (quotient (sub1 i) 2)])
+    (let ([parent (quotient (sub1 i) 2)])
       (when (and (> i 0)
-                 (lower? (vector-ref a p) (vector-ref a i)))
-        (vector-swap! a p i)
-        (loop p)))))
+                 (lower? (vector-ref a parent) (vector-ref a i)))
+        (vector-swap! a parent i)
+        (loop parent)))))
 
-(define (heap-move-down! a length lower? i)
+(define (binary-heap-fix-decreased! a length lower? i)
   (let loop ([i i])
-    (let* ([l (add1 (* 2 i))]
-           [r (add1 l)])
-      (when (< l length)
-        (let ([c (if (and (< r length)
-                          (lower? (vector-ref a l) (vector-ref a r)))
-                     r
-                     l)])
-          (when (lower? (vector-ref a i) (vector-ref a c))
-            (vector-swap! a i c)
-            (loop c)))))))
+    (let* ([left (add1 (* 2 i))]
+           [right (add1 left)])
+      (when (< left length)
+        (let ([child (if (and (< right length)
+                              (lower? (vector-ref a left) (vector-ref a right)))
+                         right
+                         left)])
+          (when (lower? (vector-ref a i) (vector-ref a child))
+            (vector-swap! a i child)
+            (loop child)))))))
+
+(define (binary-heap-top a length lower?)
+  (vector-ref a 0))
+
+(define (binary-heap-push! a length lower? x)
+  (vector-set! a length x)
+  (binary-heap-fix-increased! a (add1 length) lower? length))
+
+(define (binary-heap-pop-top! a length lower?)
+  (if (= length 0)
+      (begin0
+        (vector-ref a 0)
+        (vector-set! a 0 #f))
+      (begin0
+        (vector-ref a 0)
+        (vector-set! a 0 (vector-ref a (sub1 length)))
+        (vector-set! a (sub1 length) #f)
+        (binary-heap-fix-decreased! a (sub1 length) lower? 0))))
+
+(define (build-binary-heap! a length lower?)
+  (for ([i (in-range (sub1 (quotient length 2)) -1 -1)])
+    (binary-heap-fix-decreased! a length lower? i)))

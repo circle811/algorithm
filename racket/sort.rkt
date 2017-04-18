@@ -214,10 +214,10 @@
 
 (define (vector-heap-sort! a <?)
   (let ([length (vector-length a)])
-    (build-heap! a length <?)
+    (build-binary-heap! a length <?)
     (for ([i (in-range (sub1 length) 0 -1)])
       (vector-swap! a 0 i)
-      (heap-move-down! a i <? 0))))
+      (binary-heap-fix-decreased! a i <? 0))))
 
 (define (vector-counting-sort a key key-count)
   (let ([b (make-vector (vector-length a))]
